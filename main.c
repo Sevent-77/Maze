@@ -9,18 +9,32 @@
 #define HEIGHT (2*M_HEIGHT)+1       //Tamanho do labirinto
 #define WIDTH (2*M_WIDTH)+1         //Tamanho do labirinto
 
-typedef struct {
-    int x;                          //Struct do personagem
-    int y;
-} Character;
+typedef struct
+{
+    int x, y, dx, dy, damage, alive;
+}Bullet;                            //Struct de bala
 
-Character actor;                    //Definindo o personagem
+typedef struct 
+{
+    int x, y, damage, alive, life;
+} Character;                        //Struct de personagem
+
 char maze[HEIGHT][WIDTH];           //Criando o labirinto
+struct timespec lastBulletMove, lastEnemyMove, Now; //Variaveis para guardar o tempo
+Character enemys[10];               //Definindo os inimigos
+Character actor;                    //Definindo o personagem
+Bullet bullets[100];                //Definindo as balas            
 
 void init();                        //Definindo as funções
 void show();
 void entryProcess();
 void mazeGen(int HORIZONTAL, int VERTICAL);
+int getElapsedTime(struct timespec *lastEvent, double interval);
+void Enemys();
+void Bullets();
+void firesBullet(int dx, int dy, int x, int y, int damage);
+void createEnemy(int x, int y, int damage, int life);
+void searchFor(int originX, int originY, int *destX, int *destY, char target);
 
 int main(int argc, char const *argv[]) {
     srand(time(NULL));
@@ -32,44 +46,176 @@ int main(int argc, char const *argv[]) {
     while (1) {
         show();                         //loop de execução
         entryProcess();
+        Enemys();
+        Bullets();
     }
     endwin();
     return 0;
 }
 
 void entryProcess() {           //Definir a função para fazer o movimento do personagem
+    maze[actor.x][actor.y] = ' ';
     int key = getch();
     switch (key) {
         case KEY_UP:
-            if (maze[actor.y - 1][actor.x] == ' ') actor.y--;
+            if (maze[actor.x - 1][actor.y] == ' ') actor.x--;
             break;
         case KEY_LEFT:
-            if (maze[actor.y][actor.x - 1] == ' ') actor.x--;
+            if (maze[actor.x][actor.y - 1] == ' ') actor.y--;
             break;
         case KEY_DOWN:
-            if (maze[actor.y + 1][actor.x] == ' ') actor.y++;
+            if (maze[actor.x + 1][actor.y] == ' ') actor.x++;
             break;
         case KEY_RIGHT:
-            if (maze[actor.y][actor.x + 1] == ' ') actor.x++;
+            if (maze[actor.x][actor.y + 1] == ' ') actor.y++;
             break;
+        case 'w':
+            firesBullet(-1, 0, actor.x, actor.y, 1);
+            break;
+        case 'a':
+            firesBullet(0, -1, actor.x, actor.y, 1);
+            break;
+        case 's':
+            firesBullet(1, 0, actor.x, actor.y, 1);
+            break;
+        case 'd':
+            firesBullet(0, 1, actor.x, actor.y, 1);
+            break;
+    }
+    maze[actor.x][actor.y] = 'o';
+}
+
+void firesBullet(int dx, int dy, int x, int y, int damage)//Função que dispara bala
+{
+    if(maze[x + dx][y + dy] != ' ' && maze[x + dx][y + dy] != '.') return;
+
+    for(int i = 0; i < 100; i++) {
+        if (!bullets[i].alive) //Encontra a primeira bala livre
+        {
+            bullets[i].dx = dx;
+            bullets[i].dy = dy;
+            bullets[i].x = x;
+            bullets[i].y = y;
+            bullets[i].damage = damage;
+            bullets[i].alive = 1;
+            break;
+        }
     }
 }
 
-void show() {
-    //Exibe o personagem e o labirinto
-    for (size_t i = 0; i < HEIGHT; i++) {
-        for (size_t j = 0; j < WIDTH; j++) {
-            if (i == actor.y && j == actor.x) {
-                mvaddch(i, j, 'o');
-            } else {
-                mvaddch(i, j, maze[i][j]);
-            }
+void Bullets() //Itera a lista de balas e diz o que cada uma faz
+{
+    //A função executa a cada quinto de segundo
+    if(!getElapsedTime(&lastBulletMove, 0.2)) return;
+    
+    for(int i = 0; i < 100; i++)
+    {
+        if(bullets[i].alive == 0) continue;
+
+        maze[bullets[i].x][bullets[i].y] = ' ';
+
+        bullets[i].x += bullets[i].dx;
+        bullets[i].y += bullets[i].dy;
+        if(maze[bullets[i].x][bullets[i].y] == 'x')
+        {
+            bullets[i].alive = 0;
+            //Busca na lista de inimigos para saber qual inimigo foi atingido
+            for(int j = 0; j < 10; j++)
+                if(enemys[j].alive && enemys[j].x == bullets[i].x && enemys[j].y == bullets[i].y) 
+                    enemys[j].life -= bullets[i].damage;
+        }
+        else if(maze[bullets[i].x][bullets[i].y] != ' ') 
+        {
+            bullets[i].alive = 0;
+        }
+        else
+        {
+            maze[bullets[i].x][bullets[i].y] = '.';
         }
     }
+}
+
+//Função que cria inimigos
+void createEnemy(int x, int y, int damage, int life) {
+    for (int i = 0; i < 10; i++) 
+    {
+        if (!enemys[i].alive) 
+        {
+            enemys[i].x = x;
+            enemys[i].y = y;
+            enemys[i].damage = damage;
+            enemys[i].life = life;
+            enemys[i].alive = 1;
+            break;
+        }
+    }
+}
+
+void Enemys() //Itera a lista de inimigos e diz o que cada um faz
+{
+    //A função executa a cada segundo
+    //if(!getElapsedTime(&lastEnemyMove, 1.0)) return; Não faz sentido
+    //o teste de tempo aqui, pois caso o player mate-o, ele só desaparece no próximo loop
+    // melhor colocar o teste de tempo na função de movimento dele
+
+    for(int i = 0; i < 10; i++)
+    {
+        if(enemys[i].alive == 0) continue;
+        if(enemys[i].life <= 0) {
+            enemys[i].alive = 0;
+            maze[enemys[i].x][enemys[i].y] = ' ';
+            continue;
+        }
+
+        maze[enemys[i].x][enemys[i].y] = ' ';
+
+        if(getElapsedTime(&lastEnemyMove, 1.0)) //Movimenta o inimigo a cada segundo
+        {
+            int direction = rand() % 4;
+            switch (direction) {
+                case 0:
+                    if (maze[enemys[i].x - 1][enemys[i].y] == ' ') enemys[i].x--;
+                    break;
+                case 1:
+                    if (maze[enemys[i].x][enemys[i].y - 1] == ' ') enemys[i].y--;
+                    break;
+                case 2:
+                    if (maze[enemys[i].x + 1][enemys[i].y] == ' ') enemys[i].x++;
+                    break;
+                case 3:
+                    if (maze[enemys[i].x][enemys[i].y + 1] == ' ') enemys[i].y++;
+                    break;
+            }
+        }
+
+        maze[enemys[i].x][enemys[i].y] = 'x';
+    }
+}
+
+void searchFor(int originX, int originY, int *destX, int *destY, char target) //Busca por um alvo no labirinto
+{
+    //falta implementar
+}
+
+int getElapsedTime(struct timespec *lastEvent, double interval) //Calcula o tempo decorrido desde o último evento
+{
+    clock_gettime(CLOCK_MONOTONIC, &Now);
+    double elapsed = (Now.tv_sec - lastEvent->tv_sec) + (Now.tv_nsec - lastEvent->tv_nsec) / 1e9;
+    if (elapsed >= interval) {
+        *lastEvent = Now;
+        return 1;
+    }
+    return 0;
+}
+
+void show() { //Exibe o labirinto na tela
+    for (size_t i = 0; i < HEIGHT; i++)
+        for (size_t j = 0; j < WIDTH; j++)
+            mvaddch(i, j, maze[i][j]);
     refresh();
 }
 
-void mazeGen(int HORIZONTAL, int VERTICAL) {
+void mazeGen(int HORIZONTAL, int VERTICAL) { //Função que gera o labirinto
     int number = 1;
     int mazeMatrix[M_HEIGHT + 1][M_WIDTH]; //Cria a matriz
 
@@ -183,6 +329,12 @@ void init() {   //Função que inicia a tela
 
     actor.x = 1;    //Define o ator/personagem
     actor.y = 1;
+
+    createEnemy(1, 1, 1, 3);
+
+    //Inicia os eventos de tempo
+    clock_gettime(CLOCK_MONOTONIC, &lastEnemyMove);
+    clock_gettime(CLOCK_MONOTONIC, &lastBulletMove);
 
     //Prepara o labirinto
     for (size_t i = 0; i < HEIGHT; i++) {
