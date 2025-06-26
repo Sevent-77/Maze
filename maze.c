@@ -4,37 +4,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
-<<<<<<< Updated upstream
-#define M_HEIGHT 15                 //Tamanho da matriz do labirinto
-#define M_WIDTH 15                  //Tamanho da matriz do labirinto
-#define HEIGHT (2*M_HEIGHT)+1       //Tamanho do labirinto
-#define WIDTH (2*M_WIDTH)+1         //Tamanho do labirinto
-=======
-#define M_HEIGHT 15               // Tamanho da matriz do labirinto
-#define M_WIDTH 15                // Tamanho da matriz do labirinto
+#define M_HEIGHT 20               // Tamanho da matriz do labirinto
+#define M_WIDTH 20                // Tamanho da matriz do labirinto
 #define HEIGHT (2 * M_HEIGHT) + 1 // Tamanho do labirinto
 #define WIDTH (2 * M_WIDTH) + 1   // Tamanho do labirinto
->>>>>>> Stashed changes
 
 typedef struct
 {
     int y, x; // Struct de objeto
 } Coordinates;
 
-<<<<<<< Updated upstream
-typedef struct 
-{
-    int x, y, damage, alive, life;
-} Character;                        //Struct de personagem
-
-char maze[HEIGHT][WIDTH];           //Criando o labirinto
-struct timespec lastBulletMove, lastEnemyMove, Now; //Variaveis para guardar o tempo
-Character enemys[10];               //Definindo os inimigos
-Character actor;                    //Definindo o personagem
-Bullet bullets[100];                //Definindo as balas            
-=======
 typedef struct
 {
     int interval, alive, entranceTime;
@@ -42,7 +22,6 @@ typedef struct
     struct timespec lastEvent;
     char object;
 } Character;
->>>>>>> Stashed changes
 
 Coordinates enterDoor;
 Coordinates leaveDoor;
@@ -56,7 +35,7 @@ bool sleep_active = false;             // Controle do rastro (ativar/desativar)
 bool visited[HEIGHT][WIDTH] = {false}; // Rastrear posições visitadas
 int visitedPosition[HEIGHT][WIDTH] = {{0}};
 int visitedBFS[HEIGHT][WIDTH];
-Coordinates queue[10000000];
+Coordinates queue[100000000];
 Coordinates cameFrom[HEIGHT][WIDTH];
 int HORIZONTAL;
 int VERTICAL;
@@ -72,14 +51,11 @@ int getElapsedTime(struct timespec *lastEvent, double interval);
 void Stalker();
 void createStalker(int x, int y);
 void searchFor(int originX, int originY, int *destX, int *destY, char target);
-<<<<<<< Updated upstream
-=======
 int validPostionBFS(Coordinates value, char target);
 Coordinates dequeue(int *start);
 void enqueue(Coordinates value, int *end);
 void BFS(Coordinates origin, Coordinates *destiny, char target);
 void initBFS();
->>>>>>> Stashed changes
 
 int main()
 {
@@ -96,83 +72,12 @@ int main()
     {
         show(); // loop de execução
         entryProcess();
-<<<<<<< Updated upstream
-        Enemys();
-        Bullets();
-=======
         Stalker();
->>>>>>> Stashed changes
     }
     endwin();
     return 0;
 }
 
-<<<<<<< Updated upstream
-void entryProcess() {           //Definir a função para fazer o movimento do personagem
-    maze[actor.x][actor.y] = ' ';
-    int key = getch();
-    switch (key) {
-        case KEY_UP:
-            if (maze[actor.x - 1][actor.y] == ' ') actor.x--;
-            break;
-        case KEY_LEFT:
-            if (maze[actor.x][actor.y - 1] == ' ') actor.y--;
-            break;
-        case KEY_DOWN:
-            if (maze[actor.x + 1][actor.y] == ' ') actor.x++;
-            break;
-        case KEY_RIGHT:
-            if (maze[actor.x][actor.y + 1] == ' ') actor.y++;
-            break;
-        case 'w':
-            firesBullet(-1, 0, actor.x, actor.y, 1);
-            break;
-        case 'a':
-            firesBullet(0, -1, actor.x, actor.y, 1);
-            break;
-        case 's':
-            firesBullet(1, 0, actor.x, actor.y, 1);
-            break;
-        case 'd':
-            firesBullet(0, 1, actor.x, actor.y, 1);
-            break;
-    }
-    maze[actor.x][actor.y] = 'o';
-}
-
-void firesBullet(int dx, int dy, int x, int y, int damage)//Função que dispara bala
-{
-    if(maze[x + dx][y + dy] != ' ' && maze[x + dx][y + dy] != '.') return;
-
-    for(int i = 0; i < 100; i++) {
-        if (!bullets[i].alive) //Encontra a primeira bala livre
-        {
-            bullets[i].dx = dx;
-            bullets[i].dy = dy;
-            bullets[i].x = x;
-            bullets[i].y = y;
-            bullets[i].damage = damage;
-            bullets[i].alive = 1;
-            break;
-        }
-    }
-}
-
-void Bullets() //Itera a lista de balas e diz o que cada uma faz
-{
-    //A função executa a cada quinto de segundo
-    if(!getElapsedTime(&lastBulletMove, 0.2)) return;
-    
-    for(int i = 0; i < 100; i++)
-    {
-        if(bullets[i].alive == 0) continue;
-
-        maze[bullets[i].x][bullets[i].y] = ' ';
-
-        bullets[i].x += bullets[i].dx;
-        bullets[i].y += bullets[i].dy;
-        if(maze[bullets[i].x][bullets[i].y] == 'x')
-=======
 void genNewMaze()
 {
     clearTrail();                  // Limpa o rastro
@@ -249,7 +154,6 @@ void entryProcess()
     {
     case KEY_UP:
         if (maze[actor.position.y - 1][actor.position.x] == ' ')
->>>>>>> Stashed changes
         {
             visited[actor.position.y][actor.position.x] = true; // Marca posição atual
             actor.position.y--;
@@ -310,44 +214,6 @@ void entryProcess()
 
 void createStalker(int x, int y) // Função que cria o stalker
 {
-<<<<<<< Updated upstream
-    //A função executa a cada segundo
-    //if(!getElapsedTime(&lastEnemyMove, 1.0)) return; Não faz sentido
-    //o teste de tempo aqui, pois caso o player mate-o, ele só desaparece no próximo loop
-    // melhor colocar o teste de tempo na função de movimento dele
-
-    for(int i = 0; i < 10; i++)
-    {
-        if(enemys[i].alive == 0) continue;
-        if(enemys[i].life <= 0) {
-            enemys[i].alive = 0;
-            maze[enemys[i].x][enemys[i].y] = ' ';
-            continue;
-        }
-
-        maze[enemys[i].x][enemys[i].y] = ' ';
-
-        if(getElapsedTime(&lastEnemyMove, 1.0)) //Movimenta o inimigo a cada segundo
-        {
-            int direction = rand() % 4;
-            switch (direction) {
-                case 0:
-                    if (maze[enemys[i].x - 1][enemys[i].y] == ' ') enemys[i].x--;
-                    break;
-                case 1:
-                    if (maze[enemys[i].x][enemys[i].y - 1] == ' ') enemys[i].y--;
-                    break;
-                case 2:
-                    if (maze[enemys[i].x + 1][enemys[i].y] == ' ') enemys[i].x++;
-                    break;
-                case 3:
-                    if (maze[enemys[i].x][enemys[i].y + 1] == ' ') enemys[i].y++;
-                    break;
-            }
-        }
-
-        maze[enemys[i].x][enemys[i].y] = 'x';
-=======
     if(!getElapsedTime(&lastMazeGen, stalker.entranceTime)) return;
     if (stalker.alive == 0)
     {
@@ -357,15 +223,11 @@ void createStalker(int x, int y) // Função que cria o stalker
         stalker.alive = 1;
         stalker.position.y = enterDoor.y;
         stalker.position.x = enterDoor.x;
->>>>>>> Stashed changes
     }
 }
 
 void Stalker()
 {
-<<<<<<< Updated upstream
-    //falta implementar
-=======
     if(!getElapsedTime(&stalker.lastEvent, 0.2)) 
     {
         return;
@@ -397,12 +259,14 @@ void initBFS()
 
 void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de Breadth First Search
 {
-    //mvprintw(2*HEIGHT+1, 2*WIDTH+1, "%d, %d e %d, %d", actor.position.y, actor.position.x, stalker.position.y, stalker.position.x);
+    mvprintw(2*HEIGHT+1, 2*WIDTH+1, "%d, %d e %d, %d", actor.position.y, actor.position.x, stalker.position.y, stalker.position.x);
     refresh();
     // usleep(250000);
 
     if((actor.position.y <= 0 || actor.position.y >= HEIGHT || actor.position.x <= 0 || actor.position.x >= WIDTH) || (stalker.position.y == actor.position.y && stalker.position.x == actor.position.x))
     {
+        mvprintw(HEIGHT+11, 0, "If 1 executado");
+        refresh();
         return;
     }
 
@@ -412,15 +276,15 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
     visitedBFS[origin.y][origin.x] = 1;
     initBFS();
 
-    
+    mvprintw(origin.y, origin.x+WIDTH, "c");
     for (int i = 0; i < 4; i++)
     {
         Coordinates Node = {origin.y + direction[i].y, origin.x + direction[i].x};
 
-        
+        mvprintw(origin.y, origin.x+WIDTH, "c");
         if (validPostionBFS(Node, target))
         {
-            
+            mvprintw(Node.y, Node.x+WIDTH, "v");
             enqueue(Node, &end);
             visitedBFS[Node.y][Node.x] = 1;
             cameFrom[Node.y][Node.x] = origin;
@@ -448,6 +312,7 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
             break;
         }
 
+        mvprintw(CurrentN.y, CurrentN.x+WIDTH, "c");
 
         for (int i = 0; i < 4; i++)
         {
@@ -455,6 +320,8 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
 
             if (validPostionBFS(Node, target))
             {
+                mvprintw(Node.y, Node.x+WIDTH, "v");
+                mvprintw(0, 3*WIDTH + 1, "posicao valida: %d, %d", Node.y, Node.x);
                 enqueue(Node, &end);
                 visitedBFS[Node.y][Node.x] = 1;
                 cameFrom[Node.y][Node.x] = CurrentN;
@@ -463,12 +330,18 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
         }
     }
 
+    for(int i = 0; i < HEIGHT; i++)
+        for(int j = 0; j < WIDTH; j++)
+        {
+            mvprintw(1+i, 2 * WIDTH + j * 7, "|%d, %d", cameFrom[i][j].y, cameFrom[i][j].x);
+        }
     refresh();
 
     int try = 0;
     // fiz assim porque não quero criar uma função que compara struct
     while (cameFrom[CurrentN.y][CurrentN.x].y != origin.y || cameFrom[CurrentN.y][CurrentN.x].x != origin.x)
     {
+        mvprintw(HEIGHT + 7 + CurrentN.y, 0 + CurrentN.x,"i");
         CurrentN = cameFrom[CurrentN.y][CurrentN.x];
         try++;
         if(try >= HEIGHT * WIDTH * 10)
@@ -486,14 +359,13 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
 void enqueue(Coordinates value, int *end) // adciona na fila
 {
     queue[*end] = value;
-    *end= *end+1;
->>>>>>> Stashed changes
+    (*end)++;
 }
 
 Coordinates dequeue(int *start) // tira da fila
 {
     Coordinates p = queue[*start];
-    *start= *start+1;
+    (*start)++;
     return p;
 }
 
@@ -517,16 +389,6 @@ int getElapsedTime(struct timespec *lastEvent, double interval) // Calcula o tem
     return 0;
 }
 
-<<<<<<< Updated upstream
-void show() { //Exibe o labirinto na tela
-    for (size_t i = 0; i < HEIGHT; i++)
-        for (size_t j = 0; j < WIDTH; j++)
-            mvaddch(i, j, maze[i][j]);
-    refresh();
-}
-
-void mazeGen(int HORIZONTAL, int VERTICAL) { //Função que gera o labirinto
-=======
 void show()
 {
     for (size_t i = 0; i < HEIGHT; i++)
@@ -559,12 +421,21 @@ void show()
             }
         }
     }
+    // Exibe status do rastro
+    mvprintw(HEIGHT + 1, 0, "Rastro: %s (T para alternar)",
+             trail_active ? "ATIVO  " : "INATIVO");
+    mvprintw(HEIGHT + 2, 0, "Horizontal: %d", HORIZONTAL);
+    mvprintw(HEIGHT + 3, 0, "Vertical: %d", VERTICAL);
+    mvprintw(HEIGHT + 4, 0, "X: %d Y: %d", enterDoor.x, enterDoor.y);
+    mvprintw(HEIGHT + 5, 0, "X: %d Y: %d", leaveDoor.x, leaveDoor.y);
+    mvprintw(HEIGHT + 6, 0, "Sleep: %s (Z para alternar)",
+             sleep_active ? "ATIVO  " : "INATIVO");
+    mvprintw(HEIGHT+1, 2*WIDTH+1, "%d, %d e %d, %d", actor.position.y, actor.position.x, stalker.position.y, stalker.position.x);
     refresh();
 }
 
 void mazeGen()
 {
->>>>>>> Stashed changes
     int number = 1;
     int mazeMatrix[M_HEIGHT + 1][M_WIDTH]; // Cria a matriz
 
@@ -715,23 +586,11 @@ void init()
     stalker.position.x = enterDoor.x;
     stalker.position.y = enterDoor.y;
 
-<<<<<<< Updated upstream
-    createEnemy(1, 1, 1, 3);
-
-    //Inicia os eventos de tempo
-    clock_gettime(CLOCK_MONOTONIC, &lastEnemyMove);
-    clock_gettime(CLOCK_MONOTONIC, &lastBulletMove);
-
-    //Prepara o labirinto
-    for (size_t i = 0; i < HEIGHT; i++) {
-        for (size_t j = 0; j < WIDTH; j++) {
-=======
     // Prepara o labirinto
     for (size_t i = 0; i < HEIGHT; i++)
     {
         for (size_t j = 0; j < WIDTH; j++)
         {
->>>>>>> Stashed changes
             if (i == 0 || i == HEIGHT - 1 || j == 0 || j == WIDTH - 1)
                 maze[i][j] = '█';
             else if ((i % 2 == 0) || (j % 2 == 0))
