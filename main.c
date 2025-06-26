@@ -6,17 +6,9 @@
 #include <time.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
 
-<<<<<<< Updated upstream
-#define M_HEIGHT 15                 //Tamanho da matriz do labirinto
-#define M_WIDTH 15                  //Tamanho da matriz do labirinto
-#define HEIGHT (2*M_HEIGHT)+1       //Tamanho do labirinto
-#define WIDTH (2*M_WIDTH)+1         //Tamanho do labirinto
-
-typedef struct {
-    int x;                          //Struct do personagem
-    int y;
-=======
 #define M_HEIGHT 15               // Tamanho da matriz do labirinto
 #define M_WIDTH 15                // Tamanho da matriz do labirinto
 #define HEIGHT (2 * M_HEIGHT) + 1 // Tamanho do labirinto
@@ -33,18 +25,28 @@ typedef struct
     Coordinates position;
     struct timespec lastEvent;
     char object;
->>>>>>> Stashed changes
 } Character;
 
-Character actor;                    //Definindo o personagem
-char maze[HEIGHT][WIDTH];           //Criando o labirinto
+Coordinates enterDoor;
+Coordinates leaveDoor;
+Character actor;   // Definindo o personagem
+Character stalker; // Definindo o perseguidor
 
-void init();                        //Definindo as funções
+struct timespec Now, lastMazeGen;
+char maze[HEIGHT][WIDTH];              // Criando o labirinto
+bool trail_active = false;             // Controle do rastro (ativar/desativar)
+bool sleep_active = false;             // Controle do rastro (ativar/desativar)
+bool visited[HEIGHT][WIDTH] = {false}; // Rastrear posições visitadas
+int visitedPosition[HEIGHT][WIDTH] = {{0}};
+int visitedBFS[HEIGHT][WIDTH];
+Coordinates queue[10000000];
+Coordinates cameFrom[HEIGHT][WIDTH];
+int HORIZONTAL;
+int VERTICAL;
+
+void init(); // Definindo as funções
 void show();
 void entryProcess();
-<<<<<<< Updated upstream
-void mazeGen(int HORIZONTAL, int VERTICAL);
-=======
 void mazeGen();
 void clearTrail();
 void randomDoor();
@@ -59,54 +61,28 @@ void enqueue(Coordinates value, int *end);
 void BFS(Coordinates origin, Coordinates *destiny, char target);
 void initBFS();
 void init_color_pairs();
->>>>>>> Stashed changes
 
-int main(int argc, char const *argv[]) {
+int main()
+{
     srand(time(NULL));
-    int HORIZONTAL = rand() % 90 + 1; //Parâmetro de horinzontalidade e de verticalidade
-    int VERTICAL = rand() % 2 + 1;
+    HORIZONTAL = rand() % 100 + 1; // Parâmetro de horinzontalidade e de verticalidade
+    VERTICAL = rand() % 100 + 1;
     init();
-    mazeGen(HORIZONTAL, VERTICAL);
+    mazeGen();
 
-    while (1) {
-        show();                         //loop de execução
+    // randomDoor();
+    int p = 0;
+    Coordinates l = {0,0};
+    while (1)
+    {
+        show(); // loop de execução
         entryProcess();
-<<<<<<< Updated upstream
-=======
         Stalker();
->>>>>>> Stashed changes
     }
     endwin();
     return 0;
 }
 
-<<<<<<< Updated upstream
-void entryProcess() {           //Definir a função para fazer o movimento do personagem
-    int key = getch();
-    switch (key) {
-        case KEY_UP:
-            if (maze[actor.y - 1][actor.x] == ' ') actor.y--;
-            break;
-        case KEY_LEFT:
-            if (maze[actor.y][actor.x - 1] == ' ') actor.x--;
-            break;
-        case KEY_DOWN:
-            if (maze[actor.y + 1][actor.x] == ' ') actor.y++;
-            break;
-        case KEY_RIGHT:
-            if (maze[actor.y][actor.x + 1] == ' ') actor.x++;
-            break;
-    }
-}
-
-void show() {
-    //Exibe o personagem e o labirinto
-    for (size_t i = 0; i < HEIGHT; i++) {
-        for (size_t j = 0; j < WIDTH; j++) {
-            if (i == actor.y && j == actor.x) {
-                mvaddch(i, j, 'o');
-            } else {
-=======
 void genNewMaze()
 {
     clearTrail();                  // Limpa o rastro
@@ -345,7 +321,6 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
             break;
         }
 
-
         for (int i = 0; i < 4; i++)
         {
             Coordinates Node = {CurrentN.y + direction[i].y, CurrentN.x + direction[i].x};
@@ -449,7 +424,6 @@ void show()
             }
             else
             {
->>>>>>> Stashed changes
                 mvaddch(i, j, maze[i][j]);
             }
         }
@@ -457,34 +431,33 @@ void show()
     refresh();
 }
 
-<<<<<<< Updated upstream
-void mazeGen(int HORIZONTAL, int VERTICAL) {
-=======
 void mazeGen()
 {
->>>>>>> Stashed changes
     int number = 1;
-    int mazeMatrix[M_HEIGHT + 1][M_WIDTH]; //Cria a matriz
+    int mazeMatrix[M_HEIGHT + 1][M_WIDTH]; // Cria a matriz
 
-    //Limpa a matriz definindo tudo para 0
+    // Limpa a matriz definindo tudo para 0
     for (int i = 0; i < M_HEIGHT; i++)
         for (int j = 0; j < M_WIDTH; j++)
             mazeMatrix[i][j] = 0;
 
-    for (int i = 0; i < M_HEIGHT - 1; i++) {
-        //Cria um array para armazenar o numero de vezes que um número aparece
+    for (int i = 0; i < M_HEIGHT - 1; i++)
+    {
+        // Cria um array para armazenar o numero de vezes que um número aparece
         int arr[M_WIDTH * M_WIDTH] = {0};
-        
-        //Cria a matrix que de suporte para o labirinto
+
+        // Cria a matrix que de suporte para o labirinto
         for (int j = 0; j < M_WIDTH; j++)
             if (mazeMatrix[i][j] == 0)
-                //Adiciona o numero a matriz
+                // Adiciona o numero a matriz
                 mazeMatrix[i][j] = number++;
 
-        //Une conjuntos usando o parâmetro de aleatoriedade
-        for (int j = 1; j < M_WIDTH; j++) {
+        // Une conjuntos usando o parâmetro de aleatoriedade
+        for (int j = 1; j < M_WIDTH; j++)
+        {
             int N = rand() % 100 + 1;
-            if (N < HORIZONTAL && mazeMatrix[i][j] != mazeMatrix[i][j - 1]) {
+            if (N < HORIZONTAL && mazeMatrix[i][j] != mazeMatrix[i][j - 1])
+            {
                 int oldSet = mazeMatrix[i][j];
                 int newSet = mazeMatrix[i][j - 1];
                 for (int k = 0; k < M_WIDTH; k++)
@@ -493,43 +466,54 @@ void mazeGen()
             }
         }
 
-        //Se vários elementos são de um mesmo conjunto, eles são unidos
+        // Se vários elementos são de um mesmo conjunto, eles são unidos
         for (int k = 1; k < M_WIDTH; k++)
             if (mazeMatrix[i][k] == mazeMatrix[i][k - 1])
                 maze[i * 2 + 1][k * 2] = ' ';
 
-        //Adiciona os conjuntos ao vetor
+        // Adiciona os conjuntos ao vetor
         for (int j = 0; j < M_WIDTH; j++)
             arr[mazeMatrix[i][j]]++;
 
-        //Verifica o vetor inteirto para ver se o grupo ira se unir com a próxima linha
-        for (int j = 0; j < M_WIDTH * M_WIDTH; j++) {
-            if (arr[j] == 0) continue;
-            //Se só tiver 1 elemento, com certeza vai se unir
-            if (arr[j] == 1) {
-                for (int k = M_WIDTH - 1; k >= 0; k--) {
-                    if (mazeMatrix[i][k] == j && i < M_HEIGHT - 1) {
+        // Verifica o vetor inteirto para ver se o grupo ira se unir com a próxima linha
+        for (int j = 0; j < M_WIDTH * M_WIDTH; j++)
+        {
+            if (arr[j] == 0)
+                continue;
+            // Se só tiver 1 elemento, com certeza vai se unir
+            if (arr[j] == 1)
+            {
+                for (int k = M_WIDTH - 1; k >= 0; k--)
+                {
+                    if (mazeMatrix[i][k] == j && i < M_HEIGHT - 1)
+                    {
                         mazeMatrix[i + 1][k] = j;
                         maze[(i * 2) + 2][(k * 2) + 1] = ' ';
                         break;
                     }
                 }
-            
-            } else {    //Se tiver mais de um, aleatoriamente vai juntar ou não
+            }
+            else
+            { // Se tiver mais de um, aleatoriamente vai juntar ou não
                 int indices[M_WIDTH], count = 0;
                 for (int k = 0; k < M_WIDTH; k++)
-                    if (mazeMatrix[i][k] == j) indices[count++] = k;
+                    if (mazeMatrix[i][k] == j)
+                        indices[count++] = k;
 
-                if (count > 0) {
+                if (count > 0)
+                {
                     int forced = rand() % count;
                     int base = indices[forced];
                     mazeMatrix[i + 1][base] = j;
                     maze[(i * 2) + 2][(base * 2) + 1] = ' ';
 
-                    for (int d = 0; d < count; d++) {
-                        if (d == forced) continue;
+                    for (int d = 0; d < count; d++)
+                    {
+                        if (d == forced)
+                            continue;
                         int P = rand() % 100 + 1;
-                        if (P < VERTICAL) {
+                        if (P < VERTICAL)
+                        {
                             int k = indices[d];
                             mazeMatrix[i + 1][k] = j;
                             maze[(i * 2) + 2][(k * 2) + 1] = ' ';
@@ -539,23 +523,28 @@ void mazeGen()
             }
         }
     }
-    //Cria a ultima linha unindo tudo que falta, para não gerar becos
-    for (int j = 1; j < M_WIDTH; j++) {
-        if (mazeMatrix[M_HEIGHT - 1][j] != mazeMatrix[M_HEIGHT - 1][j - 1]) {
+    // Cria a ultima linha unindo tudo que falta, para não gerar becos
+    for (int j = 1; j < M_WIDTH; j++)
+    {
+        if ((mazeMatrix[M_HEIGHT - 1][j] != mazeMatrix[M_HEIGHT - 1][j - 1]) || (mazeMatrix[M_HEIGHT - 1][j] == 0 && mazeMatrix[M_HEIGHT - 1][j - 1] == 0))
+        {
             if (((M_HEIGHT - 1) * 2 + 1) < HEIGHT && (j * 2) < WIDTH)
                 maze[(M_HEIGHT - 1) * 2 + 1][j * 2] = ' ';
         }
     }
 
-    //Salva um txt do labirinto, apenas para analises de comportamento
+    // Salva um txt do labirinto, apenas para analises de comportamento
     FILE *arquivo = fopen("labirinto.txt", "w");
-    if (arquivo == NULL) {
+    if (arquivo == NULL)
+    {
         printf("Erro ao criar o arquivo.\n");
         return;
     }
 
-    for (int i = 0; i < M_HEIGHT; i++) {
-        for (int j = 0; j < M_WIDTH; j++) {
+    for (int i = 0; i < M_HEIGHT; i++)
+    {
+        for (int j = 0; j < M_WIDTH; j++)
+        {
             fprintf(arquivo, "%d ", mazeMatrix[i][j]);
         }
         fprintf(arquivo, "\n");
@@ -564,7 +553,20 @@ void mazeGen()
     fclose(arquivo);
 }
 
-void init() {   //Função que inicia a tela
+void clearTrail()
+{
+    for (int i = 0; i < HEIGHT; i++)
+    {
+        for (int j = 0; j < WIDTH; j++)
+        {
+            visited[i][j] = false;
+        }
+    }
+    visited[actor.position.y][actor.position.x] = true; // Marca a posição inicial
+}
+
+void init()
+{ // Função que inicia a tela
     WINDOW *win = initscr();
     init_color_pairs(); 
     setlocale(LC_ALL, "");    
@@ -574,16 +576,6 @@ void init() {   //Função que inicia a tela
     keypad(win, TRUE);
     curs_set(0);
     start_color();
-<<<<<<< Updated upstream
-    endwin();
-
-    actor.x = 1;    //Define o ator/personagem
-    actor.y = 1;
-
-    //Prepara o labirinto
-    for (size_t i = 0; i < HEIGHT; i++) {
-        for (size_t j = 0; j < WIDTH; j++) {
-=======
     wchar_t block = 0x2580; 
     wchar_t ws[2] = { block, L'\0' };
 
@@ -600,13 +592,22 @@ void init() {   //Função que inicia a tela
     {
         for (size_t j = 0; j < WIDTH; j++)
         {
->>>>>>> Stashed changes
             if (i == 0 || i == HEIGHT - 1 || j == 0 || j == WIDTH - 1)
-                maze[i][j] = '#';
+                maze[i][j] = '█';
             else if ((i % 2 == 0) || (j % 2 == 0))
-                maze[i][j] = '*';
+                maze[i][j] = '█';
             else
                 maze[i][j] = ' ';
+        }
+    }
+    for (size_t i = 0; i < HEIGHT; i++)
+    {
+        for (size_t j = 0; j < WIDTH; j++)
+        {
+            if (enterDoor.y == i && enterDoor.x == j)
+                maze[i][j] = '+';
+            else if (leaveDoor.y == i && leaveDoor.x == j)
+                maze[i][j] = '_';
         }
     }
 }
