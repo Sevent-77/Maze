@@ -4,8 +4,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define M_HEIGHT 10                 //Tamanho da matriz do labirinto
-#define M_WIDTH 10                  //Tamanho da matriz do labirinto
+#define M_HEIGHT 15                 //Tamanho da matriz do labirinto
+#define M_WIDTH 30                  //Tamanho da matriz do labirinto
+#define VERTICAL 20                  //Tamanho da matriz do labirinto
+#define HORIZONTAL 80                 //Tamanho da matriz do labirinto
 #define HEIGHT (2*M_HEIGHT)+1       //Tamanho do labirinto
 #define WIDTH (2*M_WIDTH)+1         //Tamanho do labirinto
 
@@ -25,8 +27,8 @@ Character actor;                    //Definindo o personagem
 char maze[HEIGHT][WIDTH];           //Criando o labirinto
 bool trail_active = false; // Controle do rastro (ativar/desativar)
 bool visited[HEIGHT][WIDTH] = {false}; // Rastrear posições visitadas
-int HORIZONTAL;
-int VERTICAL;
+//int HORIZONTAL;
+//int VERTICAL;
 
 void init();                        //Definindo as funções
 void show();
@@ -38,8 +40,8 @@ void genNewMaze();
 
 int main() {
     srand(time(NULL));
-    HORIZONTAL = rand() % 100 + 1; //Parâmetro de horinzontalidade e de verticalidade
-    VERTICAL = rand() % 100 + 1;
+    //HORIZONTAL = rand() % 100 + 1; //Parâmetro de horinzontalidade e de verticalidade
+    //VERTICAL = rand() % 100 + 1;
     init();
     mazeGen();
 
@@ -54,8 +56,8 @@ int main() {
 void genNewMaze(){
     clearTrail(); // Limpa o rastro
             // Reinicializa parâmetros e gera novo labirinto
-            HORIZONTAL = rand() % 100 + 1;
-            VERTICAL = rand() % 100 + 1;
+            //HORIZONTAL = rand() % 100 + 1;
+            //VERTICAL = rand() % 100 + 1;
             init();
             mazeGen();
 }
@@ -118,6 +120,8 @@ void randomDoor() {
 void entryProcess() {
     int key = getch();
     switch (key) {
+        case 'w':
+        case 'W':
         case KEY_UP:
             if (maze[actor.y - 1][actor.x] == ' ') {
                 visited[actor.y][actor.x] = true; // Marca posição atual
@@ -126,6 +130,8 @@ void entryProcess() {
                 genNewMaze();
             }
             break;
+        case 'a':
+        case 'A':
         case KEY_LEFT:
             if (maze[actor.y][actor.x - 1] == ' ') {
                 visited[actor.y][actor.x] = true;
@@ -134,6 +140,8 @@ void entryProcess() {
                 genNewMaze();
             }
             break;
+        case 's':
+        case 'S':
         case KEY_DOWN:
             if (maze[actor.y + 1][actor.x] == ' ') {
                 visited[actor.y][actor.x] = true;
@@ -142,6 +150,8 @@ void entryProcess() {
                 genNewMaze();
             }
             break;
+        case 'd':
+        case 'D':
         case KEY_RIGHT:
             if (maze[actor.y][actor.x + 1] == ' ') {
                 visited[actor.y][actor.x] = true;
@@ -306,6 +316,7 @@ void init() {   //Função que inicia a tela
     curs_set(0);
     start_color();
 
+    
     randomDoor();
     actor.x = enterDoor.x;    //Define o ator/personagem
     actor.y = enterDoor.y;
