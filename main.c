@@ -14,13 +14,30 @@ typedef struct {
     int y;
 } Character;
 
+typedef struct
+{
+    int x, y, dx, dy, damage, alive;
+}Bullet;                            //Struct de bala
+
 Character actor;                    //Definindo o personagem
 char maze[HEIGHT][WIDTH];           //Criando o labirinto
+int visited[HEIGHT][WIDTH] = {{0}};
+struct timespec lastBulletMove, lastEnemyMove, Now; //Variaveis para guardar o tempo
+Character enemys[10];               //Definindo os inimigos
+Character actor;                    //Definindo o personagem
+Bullet bullets[100];                //Definindo as balas 
 
 void init();                        //Definindo as funções
 void show();
 void entryProcess();
 void mazeGen(int HORIZONTAL, int VERTICAL);
+int getElapsedTime(struct timespec *lastEvent, double interval);
+void Enemys();
+void Bullets();
+void firesBullet(int dx, int dy, int x, int y, int damage);
+void createEnemy(int x, int y, int damage, int life);
+void searchFor(int originX, int originY, int *destX, int *destY, char target);
+void lookAtTheNeighbor(int *currentX, int *currentY, char Character, int WasVisited[HEIGHT][WIDTH], int state);
 
 int main(int argc, char const *argv[]) {
     srand(time(NULL));
@@ -53,6 +70,191 @@ void entryProcess() {           //Definir a função para fazer o movimento do p
             if (maze[actor.y][actor.x + 1] == ' ') actor.x++;
             break;
     }
+}
+
+void firesBullet(int dx, int dy, int x, int y, int damage)//Função que dispara bala
+{
+    if(maze[x + dx][y + dy] != ' ' && maze[x + dx][y + dy] != '.') return;
+
+    for(int i = 0; i < 100; i++) {
+        if (!bullets[i].alive) //Encontra a primeira bala livre
+        {
+            bullets[i].dx = dx;
+            bullets[i].dy = dy;
+            bullets[i].x = x;
+            bullets[i].y = y;
+            bullets[i].damage = damage;
+            bullets[i].alive = 1;
+            break;
+        }
+    }
+}
+
+void Bullets() //Itera a lista de balas e diz o que cada uma faz
+{
+    //A função executa a cada quinto de segundo
+    if(!getElapsedTime(&lastBulletMove, 0.2)) return;
+    
+    for(int i = 0; i < 100; i++)
+    {
+        if(bullets[i].alive == 0) continue;
+
+        maze[bullets[i].x][bullets[i].y] = ' ';
+
+        bullets[i].x += bullets[i].dx;
+        bullets[i].y += bullets[i].dy;
+
+        if(maze[bullets[i].x][bullets[i].y] == 'x')
+        {
+            bullets[i].alive = 0;
+            //Busca na lista de inimigos para saber qual inimigo foi atingido
+            for(int j = 0; j < 10; j++)
+                if(enemys[j].alive && enemys[j].x == bullets[i].x && enemys[j].y == bullets[i].y) 
+                    enemys[j].life -= bullets[i].damage;
+        }
+        else if(maze[bullets[i].x][bullets[i].y] != ' ') 
+        {
+            bullets[i].alive = 0;
+        }
+        else
+        {
+            maze[bullets[i].x][bullets[i].y] = '.';
+        }
+    }
+}
+
+//Função que cria inimigos
+void createEnemy(int x, int y, int damage, int life) {
+    for (int i = 0; i < 10; i++) 
+    {
+        if (!enemys[i].alive) 
+        {
+            enemys[i].x = x;
+            enemys[i].y = y;
+            enemys[i].damage = damage;
+            enemys[i].life = life;
+            enemys[i].alive = 1;
+            break;
+        }
+    }
+}
+
+void Enemys() //Itera a lista de inimigos e diz o que cada um faz
+{
+
+    for(int i = 0; i < 10; i++)
+    {
+        if(enemys[i].alive == 0) continue;
+        if(enemys[i].life <= 0) {
+            enemys[i].alive = 0;
+            maze[enemys[i].x][enemys[i].y] = ' ';
+            continue;
+        }
+
+        maze[enemys[i].x][enemys[i].y] = ' ';
+
+        if(getElapsedTime(&lastEnemyMove, 1.0))
+        {
+            int dx = 0, dy = 0;
+            searchFor(enemys[i].x, enemys[i].y, &dx, &dy, 'o');
+            enemys[i].x += dx;
+            enemys[i].y += dy;
+        }
+
+        maze[enemys[i].x][enemys[i].y] = 'x';
+    }
+}
+
+void searchFor(int originX, int originY, int *destX, int *destY, char target) //Busca por um alvo no labirinto
+{
+    //Não visitado = 0, visitado = 1, não leva a nada = -1
+    int cX = originX, cY = originY, oldCX, oldCY, dX, dY;
+
+    if(maze[cX][cY] == target) {
+        *destX = cX;
+        *destY = cY;
+        return;
+    }
+
+    visited[cX][cY] = 1;
+
+    while(1)
+    {
+        maze[cX][cY] = ' ';
+
+        sleep(1);
+        oldCX = cX;
+        oldCY = cY;
+
+        lookAtTheNeighbor(&cX, &cY, ' ', visited, 0);
+        mvprintw(32, 0, "X atual: ");
+        mvprintw(32, 10, "%d", cX);
+        mvprintw(33, 0, "Y atual: ");
+        mvprintw(33, 10, "%d", cY);
+        mvprintw(34, 0, visited[cX][cY]+'0');
+        show();
+
+        if((cX == oldCX && cY == oldCY) || visited[cX][cY] == 1)
+        {
+            visited[cX][cY] = -1;
+            lookAtTheNeighbor(&cX, &cY, ' ', visited, 1);
+            mvprintw(34, 0, "if 1 executado");
+        }
+
+        maze[cX][cY] = 'c';
+    }
+
+    while(1)
+    {
+        mvprintw(34, 0, "while 2 executado");
+        lookAtTheNeighbor(&cX, &cY, ' ', visited, 1);
+        if(maze[cX][cY] == maze[originX][originY])
+        {
+            mvprintw(34, 0, "if 2 executado");
+            break;
+        }
+    }
+
+    lookAtTheNeighbor(&cX, &cY, ' ', visited, 1);
+
+    *destX = cX - originX;
+    *destY = cY - originY;
+}
+
+
+void lookAtTheNeighbor(int *currentX, int *currentY, char Character, int WasVisited[HEIGHT][WIDTH], int state)
+{
+    if(maze[*currentX-1][*currentY] == ' ' && WasVisited[*currentX-1][*currentY] == state)
+        {
+            *currentX -= 1;
+            return;
+        }
+        if(maze[*currentX+1][*currentY] == ' ' && WasVisited[*currentX+1][*currentY] == state)
+        {
+            *currentX += 1;
+            return;
+        }
+        if(maze[*currentX][*currentY-1] == ' ' && WasVisited[*currentX][*currentY-1] == state)
+        {
+            *currentY -= 1;
+            return;
+        }
+        if(maze[*currentX-1][*currentY+1] == ' ' && WasVisited[*currentX][*currentY+1] == state)
+        {
+            *currentY += 1;
+            return;
+        }
+}
+
+int getElapsedTime(struct timespec *lastEvent, double interval) //Calcula o tempo decorrido desde o último evento
+{
+    clock_gettime(CLOCK_MONOTONIC, &Now);
+    double elapsed = (Now.tv_sec - lastEvent->tv_sec) + (Now.tv_nsec - lastEvent->tv_nsec) / 1e9;
+    if (elapsed >= interval) {
+        *lastEvent = Now;
+        return 1;
+    }
+    return 0;
 }
 
 void show() {
