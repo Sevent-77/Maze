@@ -20,7 +20,7 @@ This project implements a maze generation algorithm using a modified version of 
 
 1. Compile the program:
 ```bash
-gcc main.c -o main -lncurses
+gcc main.c -o main -lncurses -lrt
 ```
 
 2. Run the executable:

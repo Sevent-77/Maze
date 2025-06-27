@@ -21,10 +21,10 @@ typedef struct
 
 typedef struct
 {
-    int interval, alive, entranceTime;
+    int interval, entranceTime, life;
+    bool alive;
     Coordinates position;
     struct timespec lastEvent;
-    char object;
 } Character;
 
 Coordinates enterDoor;
@@ -32,30 +32,33 @@ Coordinates leaveDoor;
 Character actor;   // Definindo o personagem
 Character stalker; // Definindo o perseguidor
 
-struct timespec Now, lastMazeGen;
+struct timespec Now, lastMazeGen, lastTouch;
 char maze[HEIGHT][WIDTH];              // Criando o labirinto
 bool trail_active = false;             // Controle do rastro (ativar/desativar)
 bool sleep_active = false;             // Controle do rastro (ativar/desativar)
 bool visited[HEIGHT][WIDTH] = {false}; // Rastrear posições visitadas
 int visitedPosition[HEIGHT][WIDTH] = {{0}};
 int visitedBFS[HEIGHT][WIDTH];
+double speed = 1.0;
 Coordinates queue[10000000];
 Coordinates cameFrom[HEIGHT][WIDTH];
 int HORIZONTAL;
 int VERTICAL;
+int level = -1;
 
 void init(); // Definindo as funções
 void show();
+void showLife();
 void entryProcess();
 void mazeGen();
 void clearTrail();
 void randomDoor();
 void genNewMaze();
-int getElapsedTime(struct timespec *lastEvent, double interval);
+bool getElapsedTime(struct timespec *lastEvent, double interval);
 void Stalker();
-void createStalker(int x, int y);
+void createStalker();
 void searchFor(int originX, int originY, int *destX, int *destY, char target);
-int validPostionBFS(Coordinates value, char target);
+bool validPostionBFS(Coordinates value, char target);
 Coordinates dequeue(int *start);
 void enqueue(Coordinates value, int *end);
 void BFS(Coordinates origin, Coordinates *destiny, char target);
@@ -65,19 +68,18 @@ void init_color_pairs();
 int main()
 {
     srand(time(NULL));
-    HORIZONTAL = rand() % 100 + 1; // Parâmetro de horinzontalidade e de verticalidade
-    VERTICAL = rand() % 100 + 1;
-    init();
-    mazeGen();
+    actor.life = 1;
+    stalker.interval = 1.0;
+    genNewMaze();
+    genNewMaze();
 
-    // randomDoor();
-    int p = 0;
-    Coordinates l = {0,0};
     while (1)
     {
         show(); // loop de execução
         entryProcess();
         Stalker();
+        if(actor.life <= 0)
+            return 0;
     }
     endwin();
     return 0;
@@ -85,12 +87,22 @@ int main()
 
 void genNewMaze()
 {
+    stalker.position.y = 0;
+    stalker.position.x = 0;
+    level++;
+    if(actor.life < 10) actor.life++;
     clearTrail();                  // Limpa o rastro
     HORIZONTAL = rand() % 100 + 1; // Reinicializa parâmetros e gera novo labirinto
     VERTICAL = rand() % 100 + 1;
     init();
     mazeGen();
     clock_gettime(CLOCK_MONOTONIC, &lastMazeGen);
+    stalker.alive = false;
+    if(speed > 0.1)
+    {
+        speed -= 0.015;
+    }
+    showLife();
 }
 
 void randomDoor()
@@ -150,10 +162,28 @@ void randomDoor()
     // maze[enterDoor.y][enterDoor.x] = ' ';
     // maze[leaveDoor.y][leaveDoor.x] = ' ';
 }
+void showLife(){
+    attron(COLOR_PAIR(2));
+    mvprintw(HEIGHT+1, 0, "Level: %d", level);
+    attroff(COLOR_PAIR(2));
+
+    attron(COLOR_PAIR(1));
+    for (size_t i = 0; i < actor.life +1; i++)
+    {
+        mvaddch(HEIGHT + 2, i, ' ');
+    }
+    
+    for (size_t i = 0; i < actor.life; i++)
+    {
+        //attron(COLOR_PAIR(1));
+        mvaddch(HEIGHT + 2, i, '@');
+        //attroff(COLOR_PAIR(1));
+    }
+    attroff(COLOR_PAIR(1));
+}
 
 void entryProcess()
 {
-    maze[actor.position.y][actor.position.x] = ' ';
     int key = getch();
     switch (key)
     {
@@ -213,19 +243,20 @@ void entryProcess()
         sleep_active = !sleep_active;
         break;
     }
-
-    maze[actor.position.y][actor.position.x] = 'o';
 }
 
-void createStalker(int x, int y) // Função que cria o stalker
+void createStalker() // Função que cria o stalker
 {
-    if(!getElapsedTime(&lastMazeGen, stalker.entranceTime)) return;
-    if (stalker.alive == 0)
+    if(!getElapsedTime(&lastMazeGen, 3.0)) 
     {
-        stalker.interval = 1.0;
+        return;
+    }
+
+    if (!stalker.alive)
+    {
         clock_gettime(CLOCK_MONOTONIC, &stalker.lastEvent);
-        stalker.object = 'x';
-        stalker.alive = 1;
+        clock_gettime(CLOCK_MONOTONIC, &lastTouch);
+        stalker.alive = true;
         stalker.position.y = enterDoor.y;
         stalker.position.x = enterDoor.x;
     }
@@ -233,7 +264,12 @@ void createStalker(int x, int y) // Função que cria o stalker
 
 void Stalker()
 {
-    if(!getElapsedTime(&stalker.lastEvent, 0.2)) 
+
+    if(!stalker.alive)
+    {
+        createStalker();
+    }
+    if(!getElapsedTime(&stalker.lastEvent, speed) || !stalker.alive) 
     {
         return;
     }
@@ -241,6 +277,12 @@ void Stalker()
     BFS(stalker.position, &d, 'o');
         stalker.position.y += d.y;
         stalker.position.x += d.x;
+
+    if(actor.position.y == stalker.position.y && actor.position.x == stalker.position.x && getElapsedTime(&lastTouch, 3.0)){
+        actor.life -= 1;
+        showLife();
+    }
+
 }
 
 void initBFS()
@@ -274,10 +316,7 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
     refresh();
     // usleep(250000);
 
-    if((actor.position.y <= 0 || actor.position.y >= HEIGHT || actor.position.x <= 0 || actor.position.x >= WIDTH) || (stalker.position.y == actor.position.y && stalker.position.x == actor.position.x))
-    {
-        return;
-    }
+    if((actor.position.y <= 0 || actor.position.y >= HEIGHT || actor.position.x <= 0 || actor.position.x >= WIDTH) || (stalker.position.y == actor.position.y && stalker.position.x == actor.position.x)) return;
 
     int start = 0, end = 0;
     Coordinates direction[] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
@@ -293,21 +332,19 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
         
         if (validPostionBFS(Node, target))
         {
-            
             enqueue(Node, &end);
             visitedBFS[Node.y][Node.x] = 1;
             cameFrom[Node.y][Node.x] = origin;
         }
     }
     
-
-    Coordinates CurrentN;
-    for (size_t i = 0; i < HEIGHT; i++) {
-    move(i, WIDTH);            // Posiciona cursor no início da linha
-    clrtoeol();                // Limpa até o final da linha - mais eficiente
-}
+    for (size_t i = 0; i < HEIGHT; i++) 
+    {
+        move(i, WIDTH);            // Posiciona cursor no início da linha
+        clrtoeol();                // Limpa até o final da linha - mais eficiente
+    }
     
-
+    Coordinates CurrentN;
     while (start < end)
     {
         if (sleep_active)
@@ -368,28 +405,29 @@ Coordinates dequeue(int *start) // tira da fila
     return p;
 }
 
-int validPostionBFS(Coordinates value, char target) // verifica se a posição é valida para o BFS
+bool validPostionBFS(Coordinates value, char target) // verifica se a posição é valida para o BFS
 {
     if (visitedBFS[value.y][value.x] == 0 && (maze[value.y][value.x] == ' ' || maze[value.y][value.x] == target))
-        return 1;
+        return true;
     else
-        return 0;
+        return false;
 }
 
-int getElapsedTime(struct timespec *lastEvent, double interval) // Calcula o tempo decorrido desde o último evento
+bool getElapsedTime(struct timespec *lastEvent, double interval) // Calcula o tempo decorrido desde o último evento
 {
     clock_gettime(CLOCK_MONOTONIC, &Now);
     double elapsed = (Now.tv_sec - lastEvent->tv_sec) + (Now.tv_nsec - lastEvent->tv_nsec) / 1e9;
     if (elapsed >= interval)
     {
         *lastEvent = Now;
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 void show()
-{
+{   
+    
     for (size_t i = 0; i < HEIGHT; i++)
     {
         for (size_t j = 0; j < WIDTH; j++)
@@ -400,7 +438,7 @@ void show()
                 mvaddch(i, j, 'o');
                 attroff(COLOR_PAIR(3));
             }
-            else if (i == stalker.position.y && j == stalker.position.x)
+            else if (i == stalker.position.y && j == stalker.position.x && stalker.alive)
             {
                 attron(COLOR_PAIR(1));
                 mvaddch(i, j, 'x');
@@ -410,13 +448,13 @@ void show()
             {
                 attron(COLOR_PAIR(2));
                 mvaddch(i, j, '+');
-                attron(COLOR_PAIR(2));
+                attroff(COLOR_PAIR(2));
             }
             else if (i == leaveDoor.y && j == leaveDoor.x)
             {
                 attron(COLOR_PAIR(2));
                 mvaddch(i, j, '_');
-                attron(COLOR_PAIR(2));
+                attroff(COLOR_PAIR(2));
             }
             else if (trail_active && visited[i][j] && maze[i][j] == ' ')
             {
@@ -576,16 +614,11 @@ void init()
     keypad(win, TRUE);
     curs_set(0);
     start_color();
-    wchar_t block = 0x2580; 
-    wchar_t ws[2] = { block, L'\0' };
 
     randomDoor();
     actor.position.x = enterDoor.x; // Define o ator/personagem
     actor.position.y = enterDoor.y;
     clearTrail();
-    stalker.entranceTime = 5.0;
-    stalker.position.x = enterDoor.x;
-    stalker.position.y = enterDoor.y;
 
     // Prepara o labirinto
     for (size_t i = 0; i < HEIGHT; i++)
