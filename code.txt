@@ -1,0 +1,224 @@
+Algoritmo JogoLabirintoComPerseguidor
+Início
+    // Definições de constantes
+    Constante M_HEIGHT = 15
+    Constante M_WIDTH = 15
+    Constante HEIGHT = (2 * M_HEIGHT) + 1
+    Constante WIDTH = (2 * M_WIDTH) + 1
+    
+    // Tipos de dados
+    Tipo Coordenadas: Registro
+        inteiro y
+        inteiro x
+    FimRegistro
+
+    Tipo Personagem: Registro
+        inteiro intervalo, tempoEntrada, vida
+        logico vivo
+        Coordenadas posicao
+        tempo ultimoEvento  // Estrutura de tempo
+    FimRegistro
+
+    // Variáveis globais
+    maze: Matriz[0..HEIGHT-1, 0..WIDTH-1] de Caractere
+    ator, perseguidor: Personagem
+    portaEntrada, portaSaida: Coordenadas
+    trail_ativo, sleep_ativo: Logico ← Falso
+    visitado: Matriz[0..HEIGHT-1, 0..WIDTH-1] de Logico ← Falso
+    velocidade: Real ← 1.0
+    nivel: Inteiro ← -1
+    // Outras variáveis auxiliares...
+
+    // Procedimento: Inicializar pares de cores
+    Procedimento inicializarCores()
+    Início
+        Iniciar cores:
+            Par 1: Vermelho (perseguidor)
+            Par 2: Verde (portas)
+            Par 3: Amarelo (ator)
+    Fim
+
+    // Função: Verificar tempo decorrido
+    Função tempoDecorrido(ref ultimoEvento: tempo, intervalo: Real): Logico
+    Variaveis
+        agora: tempo
+        decorrido: Real
+    Início
+        agora ← obterTempoAtual()
+        decorrido ← (agora.sec - ultimoEvento.sec) + (agora.nsec - ultimoEvento.nsec) / 1e9
+        Se decorrido >= intervalo Então
+            ultimoEvento ← agora
+            Retorne Verdadeiro
+        Senão
+            Retorne Falso
+    Fim
+
+    // Procedimento: Gerar novo labirinto
+    Procedimento gerarNovoLabirinto()
+    Início
+        perseguidor.posicao ← (0, 0)
+        nivel ← nivel + 1
+        Se ator.vida < 10 Então ator.vida ← ator.vida + 1
+        limparRastro()
+        HORIZONTAL ← aleatorio(1, 100)
+        VERTICAL ← aleatorio(1, 100)
+        inicializar()
+        gerarLabirinto()
+        ultimaGeracaoLabirinto ← obterTempoAtual()
+        perseguidor.vivo ← Falso
+        Se velocidade > 0.1 Então velocidade ← velocidade - 0.015
+        mostrarVida()
+    Fim
+
+    // Procedimento: Mostrar vida do jogador
+    Procedimento mostrarVida()
+    Início
+        Escrever na posição (HEIGHT+1, 0): "Level: " + nivel (cor verde)
+        Para i de 0 até ator.vida-1 Faça
+            Desenhar '@' na posição (HEIGHT+2, i) (cor vermelha)
+    Fim
+
+    // Procedimento: Criar portas aleatórias
+    Procedimento portasAleatorias()
+    Variaveis
+        paredeEntrada, paredeSaida: Inteiro
+    Início
+        paredeEntrada ← aleatorio(1, 4)
+        Repita
+            paredeSaida ← aleatorio(1, 4)
+        Até paredeSaida ≠ paredeEntrada
+
+        // Definir porta de entrada
+        Escolha paredeEntrada
+            Caso 1:  // Topo
+                portaEntrada.x ← (aleatorio() % M_WIDTH) * 2 + 1
+                portaEntrada.y ← 0
+            Caso 2:  // Direita
+                portaEntrada.x ← WIDTH - 1
+                portaEntrada.y ← (aleatorio() % M_HEIGHT) * 2 + 1
+            Caso 3:  // Baixo
+                portaEntrada.x ← (aleatorio() % M_WIDTH) * 2 + 1
+                portaEntrada.y ← HEIGHT - 1
+            Caso 4:  // Esquerda
+                portaEntrada.x ← 0
+                portaEntrada.y ← (aleatorio() % M_HEIGHT) * 2 + 1
+        FimEscolha
+
+        // Definir porta de saída (lógica similar)
+        ...
+    Fim
+
+    // Procedimento: Processar entrada do jogador
+    Procedimento processarEntrada()
+    Variaveis
+        tecla: Caractere
+    Início
+        tecla ← lerTecla()
+        Escolha tecla
+            Caso SETA_CIMA:
+                Se maze[ator.posicao.y-1][ator.posicao.x] = ' ' Então
+                    visitado[ator.posicao.y][ator.posicao.x] ← Verdadeiro
+                    ator.posicao.y ← ator.posicao.y - 1
+                SenãoSe maze[...] = '_' Então gerarNovoLabirinto()
+            // Casos similares para SETA_ESQUERDA, SETA_BAIXO, SETA_DIREITA
+            Caso 'R', 'r': gerarNovoLabirinto()
+            Caso 'T', 't': trail_ativo ← NÃO trail_ativo
+            Caso 'z': sleep_ativo ← NÃO sleep_ativo
+        FimEscolha
+    Fim
+
+    // Procedimento: Criar perseguidor
+    Procedimento criarPerseguidor()
+    Início
+        Se tempoDecorrido(ultimaGeracaoLabirinto, 3.0) Então
+            perseguidor.ultimoEvento ← obterTempoAtual()
+            ultimoToque ← obterTempoAtual()
+            perseguidor.vivo ← Verdadeiro
+            perseguidor.posicao ← portaEntrada
+    Fim
+
+    // Procedimento: Lógica do perseguidor
+    Procedimento perseguir()
+    Variaveis
+        direcao: Coordenadas
+    Início
+        Se NÃO perseguidor.vivo Então
+            criarPerseguidor()
+            Retorne
+        
+        Se tempoDecorrido(perseguidor.ultimoEvento, velocidade) Então
+            BFS(perseguidor.posicao, direcao, 'o')  // 'o' representa o jogador
+            perseguidor.posicao.y ← perseguidor.posicao.y + direcao.y
+            perseguidor.posicao.x ← perseguidor.posicao.x + direcao.x
+            
+            Se (ator.posicao = perseguidor.posicao) E tempoDecorrido(ultimoToque, 3.0) Então
+                ator.vida ← ator.vida - 1
+                mostrarVida()
+                Se ator.vida <= 0 Então encerrarJogo()
+    Fim
+
+    // Algoritmo BFS para perseguição
+    Procedimento BFS(origem: Coordenadas, ref destino: Coordenadas, alvo: Caractere)
+    Variaveis
+        fila: Vetor[1000000] de Coordenadas
+        inicioFila, fimFila: Inteiro
+        direcoes: Vetor[4] de Coordenadas ← {{-1,0}, {1,0}, {0,-1}, {0,1}}
+        atual, proximo: Coordenadas
+    Início
+        // Inicialização e busca (implementação simplificada)
+        ...
+        // Reconstruir caminho para encontrar direção
+        ...
+        destino ← (proximo.y - origem.y, proximo.x - origem.x)
+    Fim
+
+    // Procedimento: Exibir estado do jogo
+    Procedimento mostrar()
+    Início
+        Para i de 0 até HEIGHT-1 Faça
+            Para j de 0 até WIDTH-1 Faça
+                Se (i, j) = ator.posicao Então
+                    Desenhar 'o' (amarelo)
+                SenãoSe (i, j) = perseguidor.posicao E perseguidor.vivo Então
+                    Desenhar 'x' (vermelho)
+                SenãoSe (i, j) = portaEntrada Então
+                    Desenhar '+' (verde)
+                SenãoSe (i, j) = portaSaida Então
+                    Desenhar '_' (verde)
+                SenãoSe trail_ativo E visitado[i][j] E maze[i][j] = ' ' Então
+                    Desenhar '.'
+                Senão
+                    Desenhar maze[i][j]
+        mostrarVida()
+        atualizarTela()
+    Fim
+
+    // Procedimento: Gerar labirinto
+    Procedimento gerarLabirinto()
+    Variaveis
+        matriz: Matriz[0..M_HEIGHT-1, 0..M_WIDTH-1] de Inteiro
+        contador, conjuntoAntigo, conjuntoNovo: Inteiro
+    Início
+        // Algoritmo de geração usando conjuntos
+        ...
+    Fim
+
+    // Procedimento principal
+    Principal
+    Início
+        inicializarAleatorio()
+        ator.vida ← 1
+        perseguidor.intervalo ← 1.0
+        gerarNovoLabirinto()
+        gerarNovoLabirinto()  // Dois níveis iniciais
+        
+        Enquanto Verdadeiro Faça
+            mostrar()
+            processarEntrada()
+            perseguir()
+            Se ator.vida <= 0 Então Sair
+        FimEnquanto
+        
+        encerrarModoGrafico()
+    Fim
+FimAlgoritmo

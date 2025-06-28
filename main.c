@@ -9,8 +9,8 @@
 #include <string.h>
 #include <math.h>
 
-#define M_HEIGHT 15               // Tamanho da matriz do labirinto
-#define M_WIDTH 15                // Tamanho da matriz do labirinto
+#define M_HEIGHT 12               // Tamanho da matriz do labirinto
+#define M_WIDTH 30               // Tamanho da matriz do labirinto
 #define HEIGHT (2 * M_HEIGHT) + 1 // Tamanho do labirinto
 #define WIDTH (2 * M_WIDTH) + 1   // Tamanho do labirinto
 
@@ -100,7 +100,7 @@ void genNewMaze()
     stalker.alive = false;
     if(speed > 0.1)
     {
-        speed -= 0.015;
+        speed -= 0.025;
     }
     showLife();
 }
