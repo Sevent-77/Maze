@@ -303,7 +303,7 @@ void BFS(Coordinates origin, Coordinates *destiny, char target) // Algoritmo de 
     {
         if (sleep_active)
         {
-            usleep(50000);
+            uslepp(50000);
         }
         CurrentN = dequeue(&start);
 
